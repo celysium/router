@@ -26,8 +26,6 @@ class Router implements RouterInterface
 
     public function parser(): void
     {
-        $result = [];
-
         $this->apiRouteFinder();
 
         foreach ($this->apiRoutes as $route) {
