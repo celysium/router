@@ -2,12 +2,10 @@
 
 namespace Celysium\Router;
 
-
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router as BaseRouter;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 class Router implements RouterInterface
 {
@@ -28,6 +26,8 @@ class Router implements RouterInterface
 
     public function get(): Collection
     {
+        $this->parser();
+
         return collect($this->routes);
     }
 
@@ -54,10 +54,7 @@ class Router implements RouterInterface
             ->getRoutes();
 
         foreach ($arrayRoutes as $route) {
-
-            $action = $route->action;
-
-            if (!Str::startsWith($action['prefix'], 'api')) {
+            if (!in_array('api', $route->action['middleware'])) {
                 continue;
             }
 
