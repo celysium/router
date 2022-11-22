@@ -42,12 +42,12 @@ class Router implements RouterInterface
     public function apiRouteFinder(): void
     {
         /** @var RouteCollection $routesCollection */
-        $allRoutes = $this->baseRouter
-            ->getRoutes()
+        $routesCollection = $this->baseRouter
             ->getRoutes();
 
+        $arrayRoutes = $routesCollection->getRoutes();
 
-        foreach ($allRoutes as $route) {
+        foreach ($arrayRoutes as $route) {
 
             $action = $route->action;
 
