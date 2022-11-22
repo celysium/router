@@ -2,6 +2,8 @@
 
 namespace Celysium\Router;
 
+
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router as BaseRouter;
 use Illuminate\Support\Collection;
@@ -13,10 +15,15 @@ class Router implements RouterInterface
 
     protected array $routes = [];
 
+    protected BaseRouter $baseRouter;
+
+    /**
+     * @throws BindingResolutionException
+     */
     public function __construct(
-        protected BaseRouter $baseRouter
     )
     {
+        $this->baseRouter = app()->make(BaseRouter::class);
     }
 
     public function get(): Collection
@@ -43,7 +50,8 @@ class Router implements RouterInterface
         $routesCollection = $this->baseRouter
             ->getRoutes();
 
-        $arrayRoutes = $routesCollection->getRoutes();
+        $arrayRoutes = $routesCollection
+            ->getRoutes();
 
         foreach ($arrayRoutes as $route) {
 
