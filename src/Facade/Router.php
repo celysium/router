@@ -1,6 +1,6 @@
 <?php
 
-namespace CCelysium\Router\Facade;
+namespace Celysium\Router\Facade;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Facade;
