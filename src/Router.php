@@ -2,7 +2,6 @@
 
 namespace Celysium\Router;
 
-use Illuminate\Routing\Route;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router as BaseRouter;
 use Illuminate\Support\Collection;
@@ -10,6 +9,8 @@ use Illuminate\Support\Str;
 
 class Router implements RouterInterface
 {
+    protected array $apiRoutes = [];
+
     protected array $routes = [];
 
     public function __construct(
@@ -23,32 +24,30 @@ class Router implements RouterInterface
         return collect($this->routes);
     }
 
-    public function parser(): array
+    public function parser(): void
     {
         $result = [];
 
         $this->apiRouteFinder();
 
-        foreach ($this->routes as $route) {
-            $result[] =
+        foreach ($this->apiRoutes as $route) {
+            $this->routes[] =
                 [
                     'method' => $route->methods,
                     'path' => $route->uri,
                 ];
         }
-
-        return $result;
     }
 
     public function apiRouteFinder(): void
     {
         /** @var RouteCollection $routesCollection */
-        $routesCollection = $this->baseRouter->getRoutes();
-        dd($routesCollection);
-        $arrayRoutes = $routesCollection->getRoutes();
+        $allRoutes = $this->baseRouter
+            ->getRoutes()
+            ->getRoutes();
 
-        /** @var Route $route */
-        foreach ($arrayRoutes as $route) {
+
+        foreach ($allRoutes as $route) {
 
             $action = $route->action;
 
@@ -56,7 +55,7 @@ class Router implements RouterInterface
                 continue;
             }
 
-            $this->routes[] = $route;
+            $this->apiRoutes[] = $route;
         }
     }
 }
