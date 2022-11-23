@@ -31,16 +31,6 @@
         "collection",
         "generate"
     ],
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Celysium\\Router\\RouterServiceProvider"
-            ],
-            "aliases": {
-                "router": "Celysium\\Router\\Router"
-            }
-        }
-    },
     "minimum-stability": "dev",
     "prefer-stable": true
 }
