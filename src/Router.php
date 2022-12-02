@@ -5,7 +5,6 @@ namespace Celysium\Router;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router as BaseRouter;
-use Illuminate\Support\Collection;
 
 class Router implements RouterInterface
 {
@@ -24,11 +23,11 @@ class Router implements RouterInterface
         $this->baseRouter = app()->make(BaseRouter::class);
     }
 
-    public function get(): Collection
+    public function get(): array
     {
         $this->parser();
 
-        return collect($this->routes);
+        return $this->routes;
     }
 
     public function parser(): void
@@ -40,6 +39,7 @@ class Router implements RouterInterface
                 [
                     'method' => $route->methods,
                     'path' => $route->uri,
+                    'parameters' => $this->setRouteParameters($route->uri)
                 ];
         }
     }
@@ -61,5 +61,22 @@ class Router implements RouterInterface
             $this->apiRoutes[] = $route;
         }
     }
-}
 
+    public function setRouteParameters(string $routeUri): array
+    {
+        $routeParameters = [];
+
+        $decomposedUri = explode('/', $routeUri);
+
+        foreach ($decomposedUri as $path) {
+            if (str_starts_with($path, '{') && str_ends_with($path, '}')) {
+                $routeParameters[] = [
+                    'name' => trim($path, "\{\}"),
+                    'type' => 'string'
+                ];
+            }
+        }
+
+        return $routeParameters;
+    }
+}
