@@ -71,6 +71,7 @@ class Router implements RouterInterface
         foreach ($decomposedUri as $path) {
             if (str_starts_with($path, '{') && str_ends_with($path, '}')) {
                 $routeParameters[] = [
+                    'is_optional' => str_contains($path, '?') && $this->performOptionalParameter($path),
                     'name' => trim($path, "\{\}"),
                     'type' => 'string'
                 ];
@@ -78,5 +79,12 @@ class Router implements RouterInterface
         }
 
         return $routeParameters;
+    }
+
+    protected function performOptionalParameter(&$optionalParameter): bool
+    {
+        $optionalParameter = str_replace('?', '', $optionalParameter);
+
+        return true;
     }
 }
