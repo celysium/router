@@ -30,7 +30,7 @@ class Router implements RouterInterface
         return $this->routes;
     }
 
-    public function parser(): void
+    protected function parser(): void
     {
         $this->apiRouteFinder();
 
@@ -44,7 +44,7 @@ class Router implements RouterInterface
         }
     }
 
-    public function apiRouteFinder(): void
+    protected function apiRouteFinder(): void
     {
         /** @var RouteCollection $routesCollection */
         $routesCollection = $this->baseRouter
@@ -62,7 +62,7 @@ class Router implements RouterInterface
         }
     }
 
-    public function setRouteParameters(string $routeUri): array
+    protected function setRouteParameters(string $routeUri): array
     {
         $routeParameters = [];
 
