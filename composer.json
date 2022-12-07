@@ -23,6 +23,13 @@
         "illuminate/support" : "^8.0|^9.0",
         "illuminate/routing" : "^8.0|^9.0"
     },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Celysium\\Router\\RouterProvider"
+            ]
+        }
+    },
     "keywords": [
         "Laravel",
         "api",
