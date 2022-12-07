@@ -39,6 +39,7 @@ class Router implements RouterInterface
                 [
                     'method' => $route->methods,
                     'path' => $route->uri,
+                    'name' => $route->getName() ,
                     'parameters' => $this->setRouteParameters($route->uri)
                 ];
         }
