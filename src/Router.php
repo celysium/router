@@ -2,6 +2,8 @@
 
 namespace Celysium\Router;
 
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Request;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router as BaseRouter;
 
@@ -82,5 +84,67 @@ class Router implements RouterInterface
         $optionalParameter = str_replace('?', '', $optionalParameter);
 
         return true;
+    }
+
+    protected function setRouteBodyRequest(\Illuminate\Routing\Route $route): array
+    {
+        // before you should check if it is not closutre pefrom this method otherwise return another method
+        $routeController = explode('@', $route->getAction()['controller']);
+
+        [$routeControllerClass, $routeControllerAction] = [
+            $routeController[0],
+            $routeController[1]
+        ];
+
+        $reflectionControllerClass = new \ReflectionClass($routeControllerClass);
+        $reflectionControllerMethod = $reflectionControllerClass->getMethod($routeControllerAction);
+
+        $refMethodParameters = $reflectionControllerMethod->getParameters();
+
+        foreach ($refMethodParameters as $methodParameter) {
+
+            $parameterClassPath = $methodParameter->getType()->getName(); // TODO : put this to try catch because maybe it has int , string or ...
+            $paramterClassInstance = new $parameterClassPath();
+
+            if (is_subclass_of($paramterClassInstance, FormRequest::class)) {
+                // so it is request validation
+                $requestValidationReflection = new \ReflectionClass($parameterClassPath);
+
+                $refMethod = $requestValidationReflection->getMethod('rules');
+
+                $this->getRequestValidationBodyByFile(
+                    $refMethod->getFileName(),
+                    $refMethod->getStartLine(),
+                    $refMethod->getEndLine()
+                );
+
+            } elseif ($paramterClassInstance instanceof Request) {
+                // it is closure in controller
+                dump('khodesh');
+            }
+        }
+
+        // get all paramters
+        // check if are extended from base validator
+        // then get name of the class
+        // if it is base class it means it is closure
+        // if it is not base class so get reflection class , method , body of the it
+    }
+
+    protected function getRequestValidationBodyByFile(string $filePath, int $startLine, int $endline)
+    {
+        // TODO : for this function check [] and | (pipeline)
+        $fileContentIntoArray = file($filePath);
+
+        $neededLines = array_slice($fileContentIntoArray, $startLine, $endline);
+
+        foreach ($neededLines as $line) {
+            if (!str_contains($line, '=>')) {
+                continue;
+            }
+
+            dump($line);
+        }
+        dd('end');
     }
 }
