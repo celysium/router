@@ -2,6 +2,7 @@
 
 namespace Celysium\Router;
 
+use Illuminate\Routing\Router as BaseRouter;
 use Illuminate\Support\ServiceProvider;
 
 class RouterProvider extends ServiceProvider
@@ -13,8 +14,8 @@ class RouterProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->bind('router', function ($app) {
-            return new Router();
+        $this->app->bind('celysium-router', function ($app) {
+            return new Router($app->make(BaseRouter::class));
         });
     }
 
