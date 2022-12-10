@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Routing\Router as BaseRouter;
+use function PHPUnit\Framework\isInstanceOf;
 
 class Router implements RouterInterface
 {
@@ -36,8 +37,9 @@ class Router implements RouterInterface
                 [
                     'method' => $route->methods,
                     'path' => $route->uri,
-                    'name' => $route->getName() ,
-                    'parameters' => $this->setRouteParameters($route->uri)
+                    'name' => $route->getName(),
+                    'parameters' => $this->setRouteParameters($route->uri),
+                    'body_parameters' => $this->setRouteBodyRequest($route)
                 ];
         }
     }
@@ -88,7 +90,7 @@ class Router implements RouterInterface
 
     protected function setRouteBodyRequest(\Illuminate\Routing\Route $route): array
     {
-        // before you should check if it is not closutre pefrom this method otherwise return another method
+        // before you should check if it is not closure perform this method otherwise return another method
         $routeController = explode('@', $route->getAction()['controller']);
 
         [$routeControllerClass, $routeControllerAction] = [
@@ -104,47 +106,128 @@ class Router implements RouterInterface
         foreach ($refMethodParameters as $methodParameter) {
 
             $parameterClassPath = $methodParameter->getType()->getName(); // TODO : put this to try catch because maybe it has int , string or ...
-            $paramterClassInstance = new $parameterClassPath();
+            $parameterClassInstance = new $parameterClassPath();
 
-            if (is_subclass_of($paramterClassInstance, FormRequest::class)) {
+            if (is_subclass_of($parameterClassInstance, FormRequest::class)) {
                 // so it is request validation
                 $requestValidationReflection = new \ReflectionClass($parameterClassPath);
 
                 $refMethod = $requestValidationReflection->getMethod('rules');
 
-                $this->getRequestValidationBodyByFile(
+                return $this->getRequestValidationBodyByFile(
                     $refMethod->getFileName(),
                     $refMethod->getStartLine(),
                     $refMethod->getEndLine()
                 );
 
-            } elseif ($paramterClassInstance instanceof Request) {
+            } elseif ($parameterClassInstance instanceof Request) {
                 // it is closure in controller
-                dump('khodesh');
+                return $this->getRequestValidationBodyByFile(
+                    $reflectionControllerMethod->getFileName(),
+                    $reflectionControllerMethod->getStartLine(),
+                    $reflectionControllerMethod->getEndLine(),
+                    true
+                );
             }
         }
-
-        // get all paramters
-        // check if are extended from base validator
-        // then get name of the class
-        // if it is base class it means it is closure
-        // if it is not base class so get reflection class , method , body of the it
     }
 
-    protected function getRequestValidationBodyByFile(string $filePath, int $startLine, int $endline)
+    protected function getRequestValidationBodyByFile(string $filePath, int $startLine, int $endline, $isClosureInController = false): array
     {
-        // TODO : for this function check [] and | (pipeline)
         $fileContentIntoArray = file($filePath);
 
         $neededLines = array_slice($fileContentIntoArray, $startLine, $endline);
 
-        foreach ($neededLines as $line) {
+        if ($isClosureInController)
+            return $this->getClosureControllerRequestValidation($neededLines);
+
+        return $this->getFormRequestValidation($neededLines);
+    }
+
+    protected function separateByPipeLine(string $line): array
+    {
+        $arrayKeyValues = preg_split('[=>]', $line);
+
+        [$key, $values] = [
+            $this->castArrayKey($arrayKeyValues[0]),
+            $this->castArrayValues($arrayKeyValues[1])
+        ];
+
+        return [
+            [
+                'name' => $key,
+                'rules' => explode('|', trim($values, '\,'))
+            ]
+        ];
+    }
+
+    protected function separateByArray(string $line): array
+    {
+        $arrayKeyValues = preg_split('[=>]', $line);
+
+        [$key, $values] = [
+            $this->castArrayKey($arrayKeyValues[0]),
+            $this->castArrayValues($arrayKeyValues[1], true)
+        ];
+
+        return [
+            [
+                'name' => $key,
+                'rules' => array_filter(explode(',', $values))
+            ]
+        ];
+    }
+
+    protected function castArrayKey(string $arrayKey): string
+    {
+        return str_replace("'", '', trim($arrayKey));
+    }
+
+    protected function castArrayValues(string $arrayValues, $isSeparateByArray = false): string
+    {
+        $castedValues = str_replace("'", '', trim($arrayValues));
+
+        if ($isSeparateByArray)
+            $castedValues = str_replace(array('[', ']'), '', $castedValues);
+
+        return $castedValues;
+    }
+
+    protected function getClosureControllerRequestValidation(array $lines): array
+    {
+        $result = [];
+
+        foreach ($lines as $line) { // TODO : check another way because maybe it exist => for another arrays
             if (!str_contains($line, '=>')) {
                 continue;
             }
 
-            dump($line);
+            if (str_contains($line, '|')) {
+                $result[] = $this->separateByPipeLine($line);
+            } else {
+                $result[] = $this->separateByArray($line);
+            }
         }
-        dd('end');
+
+        return $result;
+    }
+
+    protected function getFormRequestValidation(array $lines): array
+    {
+        $result = [];
+
+        foreach ($lines as $line) {
+            if (!str_contains($line, '=>')) {
+                continue;
+            }
+
+            if (str_contains($line, '|')) {
+                $result[] = $this->separateByPipeLine($line);
+            } else {
+                $result[] = $this->separateByArray($line);
+            }
+        }
+
+        return $result;
     }
 }
