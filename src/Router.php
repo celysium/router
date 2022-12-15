@@ -5,8 +5,8 @@ namespace Celysium\Router;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Request;
 use Illuminate\Routing\RouteCollection;
+use \Illuminate\Routing\Route as baseRoute;
 use Illuminate\Routing\Router as BaseRouter;
-use function PHPUnit\Framework\isInstanceOf;
 
 class Router implements RouterInterface
 {
@@ -88,9 +88,27 @@ class Router implements RouterInterface
         return true;
     }
 
-    protected function setRouteBodyRequest(\Illuminate\Routing\Route $route): array
+    protected function setRouteBodyRequest(BaseRoute $route): array
     {
-        // before you should check if it is not closure perform this method otherwise return another method
+        if (is_callable($route->action['uses']))
+            return $this->getBodyRequestFromClosure($route);
+
+        return $this->getBodyRequestFromController($route);
+    }
+
+    protected function getBodyRequestFromClosure(BaseRoute $route): array
+    {
+        $reflectionClosure = new \ReflectionFunction($route->action['uses']);
+
+        return $this->getRequestParameters(
+            $reflectionClosure->getParameters(),
+            $reflectionClosure
+        );
+    }
+
+    protected function getBodyRequestFromController(BaseRoute $route): array
+    {
+        // TODO : check if it is controller then ... if not return null or sth like this []
         $routeController = explode('@', $route->getAction()['controller']);
 
         [$routeControllerClass, $routeControllerAction] = [
@@ -103,42 +121,45 @@ class Router implements RouterInterface
 
         $refMethodParameters = $reflectionControllerMethod->getParameters();
 
-        foreach ($refMethodParameters as $methodParameter) {
+        return $this->getRequestParameters($refMethodParameters, $reflectionControllerMethod);
+    }
 
-            $parameterClassPath = $methodParameter->getType()->getName(); // TODO : put this to try catch because maybe it has int , string or ...
-            $parameterClassInstance = new $parameterClassPath();
+    protected function getRequestParameters(array $parameters, \ReflectionMethod|\ReflectionFunction $reflectionMethod = null): array
+    {
+        foreach ($parameters as $parameter) {
 
-            if (is_subclass_of($parameterClassInstance, FormRequest::class)) {
-                // so it is request validation
-                $requestValidationReflection = new \ReflectionClass($parameterClassPath);
+            $parameter = $parameter->getType()->getName();
+            $reflectionClass = new \ReflectionClass($parameter);
 
-                $refMethod = $requestValidationReflection->getMethod('rules');
+            if ($reflectionClass->isSubclassOf(FormRequest::class)) {
+                $reflectionRulesMethod = $reflectionClass->getMethod('rules');
 
                 return $this->getRequestValidationBodyByFile(
-                    $refMethod->getFileName(),
-                    $refMethod->getStartLine(),
-                    $refMethod->getEndLine()
+                    $reflectionRulesMethod->getFileName(),
+                    $reflectionRulesMethod->getStartLine(),
+                    $reflectionRulesMethod->getEndLine()
                 );
+            } elseif ($reflectionClass->isInstance(app()->make(Request::class))) {
 
-            } elseif ($parameterClassInstance instanceof Request) {
-                // it is closure in controller
                 return $this->getRequestValidationBodyByFile(
-                    $reflectionControllerMethod->getFileName(),
-                    $reflectionControllerMethod->getStartLine(),
-                    $reflectionControllerMethod->getEndLine(),
+                    $reflectionMethod->getFileName(),
+                    $reflectionMethod->getStartLine(),
+                    $reflectionMethod->getEndLine(),
                     true
                 );
+            } else {
+                continue;
             }
         }
     }
 
-    protected function getRequestValidationBodyByFile(string $filePath, int $startLine, int $endline, $isClosureInController = false): array
+    protected function getRequestValidationBodyByFile(string $filePath, int $startLine, int $endLine, $isClosure = false): array
     {
         $fileContentIntoArray = file($filePath);
 
-        $neededLines = array_slice($fileContentIntoArray, $startLine, $endline);
+        $neededLines = array_slice($fileContentIntoArray, $startLine, $endLine);
 
-        if ($isClosureInController)
+        if ($isClosure)
             return $this->getClosureControllerRequestValidation($neededLines);
 
         return $this->getFormRequestValidation($neededLines);
